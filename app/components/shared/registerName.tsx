@@ -1,54 +1,51 @@
+"use client";
 import React, { useState } from 'react';
-import { Contract } from 'ethers';
+import type { Contract } from 'ethers';
 import { pinata } from '@/utils/config';
+import { useToast } from '../ui/toast';
 
 interface RegisterNameProps {
   contract: Contract | null;
   onSuccess?: (name: string, txHash: string) => void;
-  onError?: (error: string) => void;
 }
 
 export const RegisterName: React.FC<RegisterNameProps> = ({
   contract,
   onSuccess,
-  onError,
 }) => {
-  // Form states
+  const { addToast } = useToast();
+  
   const [name, setName] = useState('');
   const [targetAddress, setTargetAddress] = useState('');
   const [file, setFile] = useState<File>();
   const [imageUrl, setImageUrl] = useState('');
   
-  // Loading states
   const [uploading, setUploading] = useState(false);
   const [registering, setRegistering] = useState(false);
   const [checkingAvailability, setCheckingAvailability] = useState(false);
+  const [gasless, setGasless] = useState(false);
   
-  // Status states
   const [nameAvailable, setNameAvailable] = useState<boolean | null>(null);
   const [imageHash, setImageHash] = useState('');
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setFile(e.target?.files?.[0]);
-    // Reset image states when new file is selected
     setImageUrl('');
     setImageHash('');
   };
 
   const uploadImage = async () => {
     if (!file) {
-      onError?.('Please select an image file');
+      addToast({ type: 'error', message: 'Please select an image file' });
       return;
     }
 
     try {
       setUploading(true);
       
-      // Get signed URL for upload
       const urlRequest = await fetch('/api/url');
       const urlResponse = await urlRequest.json();
       
-      // Upload file to Pinata
       const upload = await pinata.upload.public.file(file).url(urlResponse.url);
       const fileUrl = await pinata.gateways.public.convert(upload.cid);
       
@@ -59,7 +56,7 @@ export const RegisterName: React.FC<RegisterNameProps> = ({
     } catch (error) {
       console.error('Upload error:', error);
       setUploading(false);
-      onError?.('Failed to upload image. Please try again.');
+      addToast({ type: 'error', message: 'Failed to upload image. Please try again.' });
     }
   };
 
@@ -71,56 +68,51 @@ export const RegisterName: React.FC<RegisterNameProps> = ({
       const available = await contract.isNameAvailable(name.trim());
       setNameAvailable(available);
       setCheckingAvailability(false);
-    } catch (error) {
+    } catch (error: any) {
       console.error('Availability check error:', error);
       setCheckingAvailability(false);
-      onError?.('Failed to check name availability');
+      addToast({ type: 'error', message: 'Failed to check name availability' });
     }
   };
 
   const registerName = async () => {
     if (!contract) {
-      onError?.('Contract not initialized');
+      addToast({ type: 'error', message: 'Contract not initialized' });
       return;
     }
 
     if (!name.trim()) {
-      onError?.('Please enter a name');
+      addToast({ type: 'error', message: 'Please enter a name' });
       return;
     }
 
     if (!targetAddress.trim()) {
-      onError?.('Please enter a target address');
+      addToast({ type: 'error', message: 'Please enter a target address' });
       return;
     }
 
     if (!imageHash) {
-      onError?.('Please upload an image first');
+      addToast({ type: 'error', message: 'Please upload an image first' });
       return;
     }
 
     if (nameAvailable === false) {
-      onError?.('Name is not available');
+      addToast({ type: 'error', message: 'Name is not available' });
       return;
     }
 
     try {
       setRegistering(true);
-      
-      // Call the registerName function on the contract
       const tx = await contract.registerName(
         name.trim(),
         imageHash,
         targetAddress.trim()
       );
-      
-      // Wait for transaction confirmation
       const receipt = await tx.wait();
-      
       setRegistering(false);
+      addToast({ type: 'success', message: `Successfully registered ${name}` });
       onSuccess?.(name.trim(), receipt.transactionHash);
       
-      // Reset form
       setName('');
       setTargetAddress('');
       setFile(undefined);
@@ -132,66 +124,61 @@ export const RegisterName: React.FC<RegisterNameProps> = ({
       console.error('Registration error:', error);
       setRegistering(false);
       
-      // Handle different error types
       if (error.code === 4001) {
-        onError?.('Transaction rejected by user');
+        addToast({ type: 'error', message: 'Transaction rejected by user' });
       } else if (error.message?.includes('Name already registered')) {
-        onError?.('Name is already registered');
+        addToast({ type: 'error', message: 'Name is already registered' });
       } else if (error.message?.includes('insufficient funds')) {
-        onError?.('Insufficient funds for transaction');
+        addToast({ type: 'error', message: 'Insufficient funds for transaction' });
       } else {
-        onError?.('Registration failed. Please try again.');
+        addToast({ type: 'error', message: 'Registration failed. Please try again.' });
       }
     }
   };
 
-  // Validate Ethereum address format
   const isValidAddress = (address: string) => {
     return /^0x[a-fA-F0-9]{40}$/.test(address);
   };
 
   return (
-    <div className="bg-gray-900 rounded-lg p-6 space-y-6">
-      <h2 className="text-2xl font-bold text-white mb-4">Register New Name</h2>
+    <div className="bg-primary-purple rounded-2xl p-8 space-y-8 border border-accent-purple shadow-xl hover-lift fade-in">
+      <h2 className="text-3xl font-bold text-light-purple mb-6">Register New Name</h2>
       
-      {/* Name Input */}
-      <div className="space-y-2">
-        <label className="block text-sm font-medium text-gray-300">
+      <div className="space-y-3">
+        <label className="block text-sm font-medium text-light-purple">
           Name
         </label>
-        <div className="flex gap-2">
+        <div className="flex gap-3">
           <input
             type="text"
             value={name}
             onChange={(e) => {
               setName(e.target.value);
-              setNameAvailable(null); // Reset availability when name changes
+              setNameAvailable(null);
             }}
             placeholder="Enter name (e.g., alice)"
-            className="flex-1 px-3 py-2 bg-gray-800 border border-gray-700 rounded-md text-white placeholder-gray-400 focus:outline-none focus:border-blue-500"
+            className="flex-1 px-4 py-3 bg-secondary-purple border border-accent-purple rounded-lg text-white placeholder-light-purple focus:outline-none focus:border-light-purple focus:ring-2 focus:ring-light-purple/20"
             maxLength={64}
           />
           <button
             onClick={checkNameAvailability}
             disabled={!name.trim() || checkingAvailability}
-            className="px-4 py-2 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-600 disabled:cursor-not-allowed text-white rounded-md text-sm"
+            className="px-6 py-3 bg-accent-purple hover:bg-light-purple disabled:bg-dark-purple disabled:cursor-not-allowed text-white rounded-lg text-sm font-medium transition-all duration-200 shadow-lg"
           >
             {checkingAvailability ? 'Checking...' : 'Check'}
           </button>
         </div>
         
-        {/* Name availability status */}
         {nameAvailable === true && (
-          <p className="text-green-500 text-sm">✓ Name is available</p>
+          <p className="text-green-400 text-sm font-medium">Name is available</p>
         )}
         {nameAvailable === false && (
-          <p className="text-red-500 text-sm">✗ Name is already taken</p>
+          <p className="text-red-400 text-sm font-medium">Name is already taken</p>
         )}
       </div>
 
-      {/* Target Address Input */}
-      <div className="space-y-2">
-        <label className="block text-sm font-medium text-gray-300">
+      <div className="space-y-3">
+        <label className="block text-sm font-medium text-light-purple">
           Target Address
         </label>
         <input
@@ -199,48 +186,47 @@ export const RegisterName: React.FC<RegisterNameProps> = ({
           value={targetAddress}
           onChange={(e) => setTargetAddress(e.target.value)}
           placeholder="0x..."
-          className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-md text-white placeholder-gray-400 focus:outline-none focus:border-blue-500"
+          className="w-full px-4 py-3 bg-secondary-purple border border-accent-purple rounded-lg text-white placeholder-light-purple focus:outline-none focus:border-light-purple focus:ring-2 focus:ring-light-purple/20"
         />
         {targetAddress && !isValidAddress(targetAddress) && (
-          <p className="text-red-500 text-sm">Invalid Ethereum address format</p>
+          <p className="text-red-400 text-sm font-medium">Invalid Ethereum address format</p>
         )}
       </div>
 
-      {/* Image Upload */}
-      <div className="space-y-2">
-        <label className="block text-sm font-medium text-gray-300">
+      <div className="space-y-3">
+        <label className="block text-sm font-medium text-light-purple">
           Profile Image
         </label>
-        <div className="flex gap-2">
+        <div className="flex gap-3">
           <input
             type="file"
             onChange={handleFileChange}
             accept="image/*"
-            className="flex-1 px-3 py-2 bg-gray-800 border border-gray-700 rounded-md text-white file:mr-4 file:py-1 file:px-4 file:rounded file:border-0 file:bg-blue-600 file:text-white file:cursor-pointer"
+            className="flex-1 px-4 py-3 bg-secondary-purple border border-accent-purple rounded-lg text-white file:mr-4 file:py-2 file:px-4 file:rounded file:border-0 file:bg-accent-purple file:text-white file:cursor-pointer file:font-medium"
           />
           <button
             onClick={uploadImage}
             disabled={!file || uploading}
-            className="px-4 py-2 bg-green-600 hover:bg-green-700 disabled:bg-gray-600 disabled:cursor-not-allowed text-white rounded-md text-sm"
+            className="px-6 py-3 bg-green-600 hover:bg-green-700 disabled:bg-dark-purple disabled:cursor-not-allowed text-white rounded-lg text-sm font-medium transition-all duration-200 shadow-lg"
           >
             {uploading ? 'Uploading...' : 'Upload'}
           </button>
         </div>
         
-        {/* Image preview */}
         {imageUrl && (
-          <div className="mt-2">
-            <p className="text-green-500 text-sm mb-2">✓ Image uploaded successfully</p>
+          <div className="mt-4">
+            <p className="text-green-400 text-sm font-medium mb-3">Image uploaded successfully</p>
             <img
               src={imageUrl}
               alt="Uploaded preview"
-              className="w-32 h-32 object-cover rounded-lg border border-gray-700"
+              className="w-32 h-32 object-cover rounded-xl border-2 border-accent-purple shadow-lg"
             />
           </div>
         )}
       </div>
 
-      {/* Register Button */}
+      {/* Gasless option removed to revert to pre-AA implementation */}
+
       <button
         onClick={registerName}
         disabled={
@@ -251,10 +237,10 @@ export const RegisterName: React.FC<RegisterNameProps> = ({
           nameAvailable === false ||
           registering
         }
-        className="w-full px-4 py-3 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-600 disabled:cursor-not-allowed text-white rounded-md font-medium transition-colors"
+        className="w-full px-6 py-4 bg-accent-purple hover:bg-light-purple disabled:bg-dark-purple disabled:cursor-not-allowed text-white rounded-lg font-medium transition-all duration-200 shadow-lg text-lg"
       >
         {registering ? 'Registering...' : 'Register Name'}
       </button>
     </div>
   );
-};
+}; 

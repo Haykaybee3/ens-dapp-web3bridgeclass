@@ -16,26 +16,26 @@ export default function Header() {
   });
 
   return (
-    <header className="h-20 w-full sticky z-50 top-0 inset-x-0">
+    <header className="h-20 w-full sticky z-50 top-0 inset-x-0 bg-primary-purple border-b border-accent-purple">
       <Wrapper className="flex items-center px-6 size-full">
         {status === "connected" ? (
           <Link
-            href="https://console.optimism.io/faucet"
+            href="https://www.alchemy.com/faucets/ethereum-sepolia"
             target="_blank"
-            className="flex items-center gap-2 h-10 px-4 bg-green-500/10 rounded-md text-sm font-medium text-primary cursor-pointer"
+            className="flex items-center gap-2 h-10 px-4 bg-green-600 rounded-lg text-sm font-medium text-white cursor-pointer border border-green-500 hover:bg-green-700 transition-all duration-200"
           >
-            <MdOutlineWaterDrop className="size-5 cursor-pointer text-muted-foreground" />
-            <span className="hidden sm:block text-muted-foreground">
-              Lisk Sepolia Faucet
+            <MdOutlineWaterDrop className="size-5 cursor-pointer" />
+            <span className="hidden sm:block">
+              Sepolia Faucet
             </span>
           </Link>
         ) : status === "connecting" || status === "reconnecting" ? (
-          <p className="flex items-center gap-2 h-10 px-4 bg-blue-500/10 rounded-md text-sm font-medium text-blue-500 cursor-pointer">
+          <p className="flex items-center gap-2 h-10 px-4 bg-accent-purple rounded-lg text-sm font-medium text-white cursor-pointer border border-light-purple">
             <Loader className="size-4 animate-spin" />
             <span className="hidden sm:block capitalize">{status}...</span>
           </p>
         ) : (
-          <p className="flex items-center gap-2 h-10 px-4 bg-red-500/10 rounded-md text-sm font-medium text-destructive">
+          <p className="flex items-center gap-2 h-10 px-4 bg-red-600 rounded-lg text-sm font-medium text-white border border-red-500">
             <TbPlugConnectedX className="size-5" />
             <span className="hidden sm:block">No account connected</span>
           </p>

@@ -1,17 +1,18 @@
-import { liskSepolia } from "viem/chains";
+import { sepolia } from "viem/chains";
 import { getDefaultConfig } from "connectkit";
-import { createConfig, http, injected } from "wagmi";
+import { createConfig, http, injected, webSocket } from "wagmi";
 import { siteConfig } from "./site.config";
 
 export const projectId = `${process.env.NEXT_PUBLIC_REOWN_PROJECT_ID}`;
-export const rpcUrl = "https://rpc.sepolia-api.lisk.com";
+export const rpcUrl = "https://rpc.sepolia.org";
+export const wsRpcUrl = "wss://ethereum-sepolia.publicnode.com";
 
 export const web3Config = createConfig(
   getDefaultConfig({
-    chains: [liskSepolia],
+    chains: [sepolia],
     connectors: [injected()],
     transports: {
-      [liskSepolia.id]: http(rpcUrl),
+      [sepolia.id]: webSocket(wsRpcUrl),
     },
     walletConnectProjectId: projectId,
     appName: siteConfig.name,

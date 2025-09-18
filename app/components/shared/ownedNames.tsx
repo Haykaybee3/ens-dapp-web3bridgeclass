@@ -1,11 +1,11 @@
 import React, { useState, useEffect } from 'react';
-import { Contract } from 'ethers';
+import type { Contract } from 'ethers';
 import { useAccount } from 'wagmi';
 import { truncateAddr } from '@/utils/utils';
+import { useToast } from '../ui/toast';
 
 interface OwnedNamesDisplayProps {
   contract: Contract | null;
-  onError?: (error: string) => void;
   onNameClick?: (name: string) => void;
 }
 
@@ -20,9 +20,9 @@ interface NameDetails {
 
 export const OwnedNamesDisplay: React.FC<OwnedNamesDisplayProps> = ({
   contract,
-  onError,
   onNameClick,
 }) => {
+  const { addToast } = useToast();
   const { address } = useAccount();
   const [ownedNames, setOwnedNames] = useState<string[]>([]);
   const [nameDetails, setNameDetails] = useState<NameDetails[]>([]);
@@ -31,7 +31,6 @@ export const OwnedNamesDisplay: React.FC<OwnedNamesDisplayProps> = ({
   const [searchAddress, setSearchAddress] = useState('');
   const [currentSearchAddress, setCurrentSearchAddress] = useState('');
 
-  // Load names for current user on component mount
   useEffect(() => {
     if (address && contract) {
       loadNamesForAddress(address);
@@ -48,7 +47,6 @@ export const OwnedNamesDisplay: React.FC<OwnedNamesDisplayProps> = ({
       const names = await contract.getNamesOwnedBy(targetAddress);
       setOwnedNames(names);
       
-      // Load details for each name
       if (names.length > 0) {
         await loadNameDetails(names);
       } else {
@@ -59,7 +57,7 @@ export const OwnedNamesDisplay: React.FC<OwnedNamesDisplayProps> = ({
     } catch (error: any) {
       console.error('Error loading owned names:', error);
       setLoading(false);
-      onError?.('Failed to load owned names');
+      addToast({ type: 'error', message: 'Failed to load owned names' });
     }
   };
 
@@ -75,7 +73,6 @@ export const OwnedNamesDisplay: React.FC<OwnedNamesDisplayProps> = ({
           const result = await contract.resolveName(name);
           const [owner, resolvedAddress, imageHash, registrationTime] = result;
           
-          // Convert IPFS hash to URL if it exists
           let imageUrl;
           if (imageHash) {
             imageUrl = `https://gateway.pinata.cloud/ipfs/${imageHash}`;
@@ -99,18 +96,18 @@ export const OwnedNamesDisplay: React.FC<OwnedNamesDisplayProps> = ({
     } catch (error) {
       console.error('Error loading name details:', error);
       setLoadingDetails(false);
-      onError?.('Failed to load name details');
+      addToast({ type: 'error', message: 'Failed to load name details' });
     }
   };
 
   const handleSearch = () => {
     if (!searchAddress.trim()) {
-      onError?.('Please enter an address to search');
+      addToast({ type: 'error', message: 'Please enter an address to search' });
       return;
     }
 
     if (!/^0x[a-fA-F0-9]{40}$/.test(searchAddress.trim())) {
-      onError?.('Please enter a valid Ethereum address');
+      addToast({ type: 'error', message: 'Please enter a valid Ethereum address' });
       return;
     }
 
@@ -133,67 +130,63 @@ export const OwnedNamesDisplay: React.FC<OwnedNamesDisplayProps> = ({
   };
 
   return (
-    <div className="bg-gray-900 rounded-lg p-6 space-y-6">
+    <div className="bg-accent-purple rounded-2xl p-8 space-y-8 border border-light-purple shadow-xl hover-lift fade-in">
       <div className="flex items-center justify-between">
-        <h2 className="text-2xl font-bold text-white">Owned Names</h2>
+        <h2 className="text-3xl font-bold text-light-purple">Owned Names</h2>
         {address && (
           <button
             onClick={handleLoadMyNames}
-            className="px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-md text-sm font-medium transition-colors"
+            className="px-6 py-3 bg-green-600 hover:bg-green-700 text-white rounded-lg text-sm font-medium transition-all duration-200 shadow-lg"
           >
             Load My Names
           </button>
         )}
       </div>
 
-      {/* Search for names by address */}
-      <div className="space-y-2">
-        <label className="block text-sm font-medium text-gray-300">
+      <div className="space-y-3">
+        <label className="block text-sm font-medium text-light-purple">
           Search names by owner address
         </label>
-        <div className="flex gap-2">
+        <div className="flex gap-3">
           <input
             type="text"
             value={searchAddress}
             onChange={(e) => setSearchAddress(e.target.value)}
             placeholder="Enter Ethereum address (0x...)"
-            className="flex-1 px-4 py-2 bg-gray-800 border border-gray-700 rounded-md text-white placeholder-gray-400 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+            className="flex-1 px-4 py-3 bg-primary-purple border border-light-purple rounded-lg text-white placeholder-light-purple focus:outline-none focus:border-light-purple focus:ring-2 focus:ring-light-purple/20"
           />
           <button
             onClick={handleSearch}
             disabled={!searchAddress.trim() || loading}
-            className="px-6 py-2 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-600 disabled:cursor-not-allowed text-white rounded-md font-medium transition-colors"
+            className="px-6 py-3 bg-secondary-purple hover:bg-accent-purple disabled:bg-dark-purple disabled:cursor-not-allowed text-white rounded-lg font-medium transition-all duration-200 shadow-lg"
           >
             Search
           </button>
         </div>
       </div>
 
-      {/* Loading State */}
       {loading && (
         <div className="flex items-center justify-center py-8">
-          <div className="flex items-center gap-3 text-gray-400">
-            <div className="w-6 h-6 border-2 border-gray-400 border-t-transparent rounded-full animate-spin"></div>
+          <div className="flex items-center gap-3 text-light-purple">
+            <div className="w-6 h-6 border-2 border-light-purple border-t-transparent rounded-full animate-spin"></div>
             Loading names...
           </div>
         </div>
       )}
 
-      {/* Current search info */}
       {currentSearchAddress && !loading && (
-        <div className="bg-gray-800 rounded-lg p-4">
-          <p className="text-gray-300 text-sm">
-            Showing names owned by: <span className="text-white font-mono">{truncateAddr(currentSearchAddress)}</span>
+        <div className="bg-primary-purple rounded-lg p-4 border border-light-purple">
+          <p className="text-light-purple text-sm">
+            Showing names owned by: <span className="text-light-purple font-mono">{truncateAddr(currentSearchAddress)}</span>
           </p>
-          <p className="text-gray-400 text-xs mt-1">
+          <p className="text-light-purple text-xs mt-1">
             Found {ownedNames.length} name{ownedNames.length !== 1 ? 's' : ''}
           </p>
         </div>
       )}
 
-      {/* Names List */}
       {!loading && ownedNames.length === 0 && currentSearchAddress && (
-        <div className="text-center py-8 text-gray-400">
+        <div className="text-center py-8 text-light-purple">
           <p>No names found for this address</p>
         </div>
       )}
@@ -201,7 +194,7 @@ export const OwnedNamesDisplay: React.FC<OwnedNamesDisplayProps> = ({
       {!loading && ownedNames.length > 0 && (
         <div className="space-y-4">
           {loadingDetails && (
-            <div className="text-center text-gray-400">
+            <div className="text-center text-light-purple">
               <p>Loading name details...</p>
             </div>
           )}
@@ -210,12 +203,11 @@ export const OwnedNamesDisplay: React.FC<OwnedNamesDisplayProps> = ({
             {nameDetails.map((nameDetail) => (
               <div
                 key={nameDetail.name}
-                className="bg-gray-800 rounded-lg p-4 border border-gray-700 hover:border-gray-600 transition-colors cursor-pointer"
+                className="bg-primary-purple rounded-xl p-6 border border-light-purple hover:border-accent-purple transition-all duration-200 cursor-pointer shadow-lg hover:shadow-xl hover-lift"
                 onClick={() => onNameClick?.(nameDetail.name)}
               >
                 <div className="flex items-start gap-4">
-                  {/* Profile Image */}
-                  <div className="w-16 h-16 rounded-lg bg-gray-700 flex-shrink-0 overflow-hidden">
+                  <div className="w-16 h-16 rounded-xl bg-secondary-purple flex-shrink-0 overflow-hidden border border-accent-purple">
                     {nameDetail.imageUrl ? (
                       <img
                         src={nameDetail.imageUrl}
@@ -226,49 +218,49 @@ export const OwnedNamesDisplay: React.FC<OwnedNamesDisplayProps> = ({
                         }}
                       />
                     ) : (
-                      <div className="w-full h-full flex items-center justify-center text-gray-400">
-                        <span className="text-xl">👤</span>
+                      <div className="w-full h-full flex items-center justify-center text-light-purple">
+                        <div className="w-8 h-8 rounded-full bg-secondary-purple flex items-center justify-center">
+                          <span className="text-sm font-bold text-white">U</span>
+                        </div>
                       </div>
                     )}
                   </div>
 
-                  {/* Name Details */}
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 mb-2">
-                      <h3 className="text-lg font-semibold text-white truncate">
+                      <h3 className="text-lg font-semibold text-light-purple truncate">
                         {nameDetail.name}
                       </h3>
-                      <span className="px-2 py-1 bg-blue-600 text-white text-xs rounded-full">
+                      <span className="px-3 py-1 bg-accent-purple text-white text-xs rounded-full font-medium">
                         ENS
                       </span>
                     </div>
 
                     <div className="space-y-1 text-sm">
-                      <div className="flex items-center gap-2 text-gray-300">
-                        <span className="text-gray-400">Resolves to:</span>
-                        <span className="font-mono text-blue-400">
+                      <div className="flex items-center gap-2 text-light-purple">
+                        <span className="text-light-purple">Resolves to:</span>
+                        <span className="font-mono text-light-purple">
                           {truncateAddr(nameDetail.resolvedAddress)}
                         </span>
                       </div>
                       
-                      <div className="flex items-center gap-2 text-gray-300">
-                        <span className="text-gray-400">Owner:</span>
+                      <div className="flex items-center gap-2 text-light-purple">
+                        <span className="text-light-purple">Owner:</span>
                         <span className="font-mono text-green-400">
                           {truncateAddr(nameDetail.owner)}
                         </span>
                       </div>
 
-                      <div className="flex items-center gap-2 text-gray-300">
-                        <span className="text-gray-400">Registered:</span>
-                        <span>{formatDate(nameDetail.registrationTime)}</span>
+                      <div className="flex items-center gap-2 text-light-purple">
+                        <span className="text-light-purple">Registered:</span>
+                        <span className="text-light-purple">{formatDate(nameDetail.registrationTime)}</span>
                       </div>
                     </div>
                   </div>
 
-                  {/* Action Indicator */}
-                  <div className="flex items-center text-gray-400">
+                  <div className="flex items-center text-light-purple">
                     <span className="text-sm">Click for details</span>
-                    <span className="ml-2">→</span>
+                    <span className="ml-2 text-light-purple">→</span>
                   </div>
                 </div>
               </div>

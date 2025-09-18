@@ -7,10 +7,15 @@ export const getNameAvailable = async (name: string): Promise<boolean> => {
 
     try {
         const contract: Contract = await getENSContract();
+        
+        if (!contract) {
+            throw new Error("Contract not initialized. Please check your wallet connection.");
+        }
+        
         const isAvailable: boolean = await contract.isNameAvailable(name);
-
         return isAvailable;
-    } catch(error) {
+    } catch(error: any) {
+        console.error("Error checking name availability:", error);
         handleErrorMessage(error);
         throw error;
     }
@@ -21,6 +26,11 @@ export const registerName = async (name: string, imageHash: string, targetAddr: 
 
     try {
         const contract: Contract = await getENSContract();
+        
+        if (!contract) {
+            throw new Error("Contract not initialized. Please check your wallet connection.");
+        }
+        
         const tx = await contract.registerName(name, imageHash, targetAddr);
         await tx.wait();
 
@@ -36,6 +46,11 @@ export const getNamesOwned = async (owner: string): Promise<string[]> => {
 
     try {
         const contract: Contract = await getENSContract();
+        
+        if (!contract) {
+            throw new Error("Contract not initialized. Please check your wallet connection.");
+        }
+        
         const names: string[] = await contract.getNamesOwnedBy(owner);
 
         return names;

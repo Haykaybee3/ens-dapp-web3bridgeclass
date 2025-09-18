@@ -1,7 +1,8 @@
 import type { Metadata } from "next";
 import localFont from "next/font/local";
 import "./globals.css";
-import Web3Provider from "./components/providers/web3.provider";
+import dynamic from "next/dynamic";
+const Web3Provider = dynamic(() => import("./components/providers/web3.provider"), { ssr: false });
 import Header from "./components/shared/header";
 
 const geistSans = localFont({
@@ -28,7 +29,7 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body
-        className={`${geistSans.variable} ${geistMono.variable} antialiased bg-gray-900 text-white`}
+        className={`${geistSans.variable} ${geistMono.variable} antialiased text-white`}
       >
         <Web3Provider>
           <Header />

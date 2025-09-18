@@ -5,6 +5,7 @@ import type { PropsWithChildren } from "react";
 import { ConnectKitProvider } from "connectkit";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { projectId, web3Config } from "@/app/config/web3.config";
+import { ToastProvider } from "../ui/toast";
 
 if (!projectId) throw new Error("NEXT_WALLETCONNECT_PROJECT_ID is not defined");
 
@@ -46,7 +47,9 @@ export default function Web3Provider({ children }: PropsWithChildren<{}>) {
             "--ck-border-radius": "24px",
           }}
         >
-          {children}
+          <ToastProvider>
+            {children}
+          </ToastProvider>
         </ConnectKitProvider>
       </QueryClientProvider>
     </WagmiProvider>
