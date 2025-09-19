@@ -3,7 +3,7 @@ import { getDefaultConfig } from "connectkit";
 import { createConfig, http, injected, webSocket } from "wagmi";
 import { siteConfig } from "./site.config";
 
-export const projectId = `${process.env.NEXT_PUBLIC_REOWN_PROJECT_ID}`;
+export const projectId = `${process.env.NEXT_REOWN_PROJECT_ID}`;
 export const rpcUrl = "https://rpc.sepolia.org";
 export const wsRpcUrl = "wss://ethereum-sepolia.publicnode.com";
 
