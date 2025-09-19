@@ -35,6 +35,25 @@ export const useENSEvents = () => {
     return undefined;
   };
 
+  // Cache block timestamp lookups per block hash to reduce RPC calls
+  const blockTimestampCache = useMemo(() => new Map<string, number>(), []);
+  const getLogTimestampMs = async (log: { blockHash?: `0x${string}` | null } | any): Promise<number> => {
+    if (!client) return Date.now();
+    const hash = log.blockHash as `0x${string}` | undefined | null;
+    if (!hash) return Date.now();
+    const key = hash.toLowerCase();
+    const cached = blockTimestampCache.get(key);
+    if (cached) return cached;
+    try {
+      const block = await client.getBlock({ blockHash: hash });
+      const tsMs = Number(block.timestamp) * 1000;
+      blockTimestampCache.set(key, tsMs);
+      return tsMs;
+    } catch {
+      return Date.now();
+    }
+  };
+
   useEffect(() => {
     let cancelled = false;
     const loadHistorical = async () => {
@@ -54,33 +73,36 @@ export const useENSEvents = () => {
         const histReg = await Promise.all(regLogs.map(async (log) => {
           const a = (log as any).args as { name: string; owner: `0x${string}`; imageHash: string };
           const name = looksHashed(a.name) ? (await resolveNameFromTx(log.transactionHash)) ?? a.name : a.name;
+          const ts = await getLogTimestampMs(log);
           return {
             id: `${log.transactionHash}-${log.logIndex}`,
             type: 'NameRegistered' as const,
             payload: { name, owner: a.owner, imageHash: a.imageHash },
-            timestamp: Date.now(),
+            timestamp: ts,
           } satisfies ENSEvent;
         }));
 
         const histXfer = await Promise.all(xferLogs.map(async (log) => {
           const a = (log as any).args as { name: string; oldOwner: `0x${string}`; newOwner: `0x${string}` };
           const name = looksHashed(a.name) ? (await resolveNameFromTx(log.transactionHash)) ?? a.name : a.name;
+          const ts = await getLogTimestampMs(log);
           return {
             id: `${log.transactionHash}-${log.logIndex}`,
             type: 'NameTransferred' as const,
             payload: { name, oldOwner: a.oldOwner, newOwner: a.newOwner },
-            timestamp: Date.now(),
+            timestamp: ts,
           } satisfies ENSEvent;
         }));
 
         const histUpd = await Promise.all(updLogs.map(async (log) => {
           const a = (log as any).args as { name: string; newAddress: `0x${string}`; newImageHash: string };
           const name = looksHashed(a.name) ? (await resolveNameFromTx(log.transactionHash)) ?? a.name : a.name;
+          const ts = await getLogTimestampMs(log);
           return {
             id: `${log.transactionHash}-${log.logIndex}`,
             type: 'NameUpdated' as const,
             payload: { name, newAddress: a.newAddress, newImageHash: a.newImageHash },
-            timestamp: Date.now(),
+            timestamp: ts,
           } satisfies ENSEvent;
         }));
 
@@ -97,7 +119,7 @@ export const useENSEvents = () => {
     };
     loadHistorical();
     return () => { cancelled = true };
-  }, [client, eventParsers]);
+  }, [client, eventParsers, blockTimestampCache]);
 
   useWatchContractEvent({
     address: ENSContract.contractAddr,
@@ -108,11 +130,12 @@ export const useENSEvents = () => {
       const mapped = await Promise.all(logs.map(async (log) => {
         const a = (log as any).args as { name: string; owner: `0x${string}`; imageHash: string };
         const name = looksHashed(a.name) ? (await resolveNameFromTx(log.transactionHash)) ?? a.name : a.name;
+        const ts = await getLogTimestampMs(log);
         return {
           id: `${log.transactionHash}-${log.logIndex}`,
           type: 'NameRegistered' as const,
           payload: { name, owner: a.owner, imageHash: a.imageHash },
-          timestamp: Date.now(),
+          timestamp: ts,
         } satisfies ENSEvent;
       }));
       setEvents(prev => {
@@ -132,11 +155,12 @@ export const useENSEvents = () => {
       const mapped = await Promise.all(logs.map(async (log) => {
         const a = (log as any).args as { name: string; oldOwner: `0x${string}`; newOwner: `0x${string}` };
         const name = looksHashed(a.name) ? (await resolveNameFromTx(log.transactionHash)) ?? a.name : a.name;
+        const ts = await getLogTimestampMs(log);
         return {
           id: `${log.transactionHash}-${log.logIndex}`,
           type: 'NameTransferred' as const,
           payload: { name, oldOwner: a.oldOwner, newOwner: a.newOwner },
-          timestamp: Date.now(),
+          timestamp: ts,
         } satisfies ENSEvent;
       }));
       setEvents(prev => {
@@ -156,11 +180,12 @@ export const useENSEvents = () => {
       const mapped = await Promise.all(logs.map(async (log) => {
         const a = (log as any).args as { name: string; newAddress: `0x${string}`; newImageHash: string };
         const name = looksHashed(a.name) ? (await resolveNameFromTx(log.transactionHash)) ?? a.name : a.name;
+        const ts = await getLogTimestampMs(log);
         return {
           id: `${log.transactionHash}-${log.logIndex}`,
           type: 'NameUpdated' as const,
           payload: { name, newAddress: a.newAddress, newImageHash: a.newImageHash },
-          timestamp: Date.now(),
+          timestamp: ts,
         } satisfies ENSEvent;
       }));
       setEvents(prev => {
